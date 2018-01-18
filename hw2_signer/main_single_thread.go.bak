@@ -1,0 +1,120 @@
+package main
+
+import (
+	"fmt"
+	"sort"
+	"strconv"
+)
+
+//import (
+//	"fmt"
+//)l
+func signMd5(in, out chan string){
+
+}
+
+func calcCrc32(in, out chan string){
+	fmt.Println("calcCrc32 called")
+	data := <- in
+	out <- DataSignerCrc32(data)
+}
+
+func calcCrc32Md5(in, out chan string){
+	fmt.Println("calcCrc32 called")
+	data := <- in
+	out <- DataSignerCrc32(DataSignerMd5(data))
+}
+
+func SingleHash(in, out chan interface{}) {
+	fmt.Println("SingleHash")
+	for rawData := range in {
+		int_data, ok := rawData.(int)
+		data := strconv.Itoa(int_data)
+		fmt.Println("SingleHash data:", data)
+		if !ok {
+			panic("Wrong type in SingleHash")
+		}
+		crc32in := make(chan string, 1)
+		crc32out := make(chan string, 1)
+		crc32in <- data
+		go calcCrc32(crc32in, crc32out)
+
+
+		crc32Md5in := make(chan string, 1)
+		crc32Md5out:= make(chan string, 1)
+		crc32Md5in <- data
+
+		go calcCrc32Md5(crc32Md5in, crc32Md5out)
+
+		crc32Data := <- crc32out
+		crc32Md5Data := <- crc32Md5out
+
+		fmt.Println("SingleHash crc32_md5_data:", crc32Md5Data)
+		fmt.Println("SingleHash crc32_data:", crc32Data)
+
+		out <- crc32Data + "~" + crc32Md5Data
+	}
+	close(out)
+}
+
+func calcThDataCrc32(th,data string, out chan string){
+
+}
+
+func MultiHash(in, out chan interface{}) {
+
+	res := ""
+	step := ""
+	var thString string
+	workerOut := make(chan string, 10)
+	for rawData := range in {
+		res = ""
+		data, ok := rawData.(string)
+		fmt.Println("MultiHash data:",data)
+		if !ok {
+			panic("Wrong type in SingleHash")
+		}
+		for th:=0; th<6; th++{
+			thString = strconv.Itoa(th)
+			step = DataSignerCrc32(thString + data)
+			fmt.Printf("MultiHash iter: %v step: %v \n",thString, step)
+			res = res + step
+		}
+		out <- res
+	}
+	close(out)
+}
+
+func CombineResults(in, out chan interface{}) {
+	fmt.Println("CombineResults")
+	res := ""
+	results := []string{}
+	for data := range in {
+		results = append(results, data.(string))
+	}
+	sort.Strings(results)
+	for _, s := range results{
+		res += s
+		res += "_"
+	}
+	out <- res[:len(res)-1]
+	close(out)
+}
+
+func ExecutePipeline(hashSignJobs ... job) {
+	in := make(chan interface{}, 7)
+	out := make(chan interface{}, 7)
+	for _, fn := range hashSignJobs {
+		//fmt.Printf("Before idx: %v fn %v in %v out %v\n", ix, fn, in, out)
+		fn(in, out)
+		in = out
+		out = make(chan interface{}, 7)
+		//fmt.Printf("After idx: %v fn %v in %v out %v\n", ix, fn, in, out)
+		//fmt.Printf("idx %v\n", ix)
+	}
+	fmt.Scanln()
+}
+
+func main() {
+	println("run as\n\ngo test -v -race")
+}
