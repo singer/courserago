@@ -13,9 +13,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Name:", h.Name, "URL:", r.URL.String())
 }
 
+
+
 func main() {
 	testHandler := &Handler{Name: "test"}
-	http.Handle("/test/", testHandler)
+	http.Handle("/test/",testHandler)
 
 	rootHandler := &Handler{Name: "root"}
 	http.Handle("/", rootHandler)

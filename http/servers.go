@@ -18,7 +18,8 @@ func runServer(addr string) {
 	}
 
 	fmt.Println("starting server at", addr)
-	server.ListenAndServe()
+	err := server.ListenAndServe()
+	fmt.Println("error", err)
 }
 
 func main() {
